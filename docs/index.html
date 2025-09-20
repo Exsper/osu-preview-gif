@@ -165,8 +165,8 @@
             </div>
 
             <div class="input-group">
-                <label>结束时间(ms)：</label>
-                <input type="text" value="-1" id="endTimeInput" placeholder="-1表示谱面结尾" />
+                <label>持续时间(ms)：</label>
+                <input type="text" value="-1" id="durationInput" placeholder="-1表示到结尾" />
             </div>
 
             <div class="input-group">
@@ -236,7 +236,7 @@
             const scaleInput = document.getElementById('scaleInput');
             const timeSpanInput = document.getElementById('timeSpanInput');
             const startTimeInput = document.getElementById('startTimeInput');
-            const endTimeInput = document.getElementById('endTimeInput');
+            const durationInput = document.getElementById('durationInput');
             const qualityInput = document.getElementById('qualityInput');
             const generateBtn = document.getElementById('generateBtn');
             const status = document.getElementById('status');
@@ -249,7 +249,7 @@
                 const scaleValue = parseFloat(scaleInput.value.trim());
                 const timeSpanValue = parseInt(timeSpanInput.value.trim());
                 const startTimeValue = parseInt(startTimeInput.value.trim());
-                const endTimeValue = parseInt(endTimeInput.value.trim());
+                const durationValue = parseInt(durationInput.value.trim());
                 const qualityValue = parseInt(qualityInput.value.trim());
 
                 // 验证输入
@@ -273,8 +273,8 @@
                     status.style.color = '#ff6666';
                     return;
                 }
-                if (isNaN(endTimeValue) || (endTimeValue !== -1 && endTimeValue <= startTimeValue)) {
-                    status.textContent = '请输入有效的结束时间';
+                if (isNaN(durationValue) || (durationValue < 0 && durationValue !== -1)) {
+                    status.textContent = '请输入有效的持续时间';
                     status.style.color = '#ff6666';
                     return;
                 }
@@ -284,10 +284,10 @@
                     return;
                 }
 
-                generateGIF(beatmapID, scaleValue, timeSpanValue, startTimeValue, endTimeValue, qualityValue);
+                generateGIF(beatmapID, scaleValue, timeSpanValue, startTimeValue, durationValue, qualityValue);
             });
 
-            function generateGIF(beatmapID, scaleValue, timeSpanValue, startTimeValue, endTimeValue, qualityValue) {
+            function generateGIF(beatmapID, scaleValue, timeSpanValue, startTimeValue, durationValue, qualityValue) {
                 status.textContent = '正在获取谱面数据...';
                 status.style.color = '#fff';
                 progressContainer.style.display = 'block';
@@ -319,7 +319,7 @@
 
                         // 使用用户指定的开始和结束时间
                         const actualStartTime = startTimeValue === -1 ? preview.startTime : Math.max(startTimeValue, 0);
-                        const actualEndTime = endTimeValue === -1 ? preview.endTime : Math.min(endTimeValue, preview.endTime);
+                        const actualEndTime = durationValue === -1 ? preview.endTime : Math.min(actualStartTime + durationValue, preview.endTime);
 
                         var gif = new GIF({
                             workers: 4,
