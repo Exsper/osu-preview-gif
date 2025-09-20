@@ -47,10 +47,21 @@
 
         .input-area {
             display: flex;
+            flex-wrap: wrap;
             gap: 10px;
             margin-bottom: 20px;
             width: 100%;
             justify-content: center;
+        }
+
+        .input-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .input-group label {
+            white-space: nowrap;
         }
 
         input {
@@ -59,7 +70,7 @@
             border-radius: 5px;
             background: rgba(255, 255, 255, 0.1);
             color: white;
-            width: 160px;
+            width: 200px;
         }
 
         button {
@@ -133,8 +144,36 @@
         </div>
 
         <div class="input-area">
-            <p>谱面ID：</p><input type="text" value="1764213" id="beatmapInput" placeholder="输入谱面ID (例如: 1764213)" />
-            <p>缩放比例：</p><input type="text" value="0.2" id="scaleInput" placeholder="建议0.2，0.5以上会显著降低生成速度" />
+            <div class="input-group">
+                <label>谱面ID：</label>
+                <input type="text" value="172662" id="beatmapInput" placeholder="例如: 172662" />
+            </div>
+
+            <div class="input-group">
+                <label>缩放比例：</label>
+                <input type="text" value="0.2" id="scaleInput" placeholder="建议0.2，0.5以上生成速度显著降低" />
+            </div>
+
+            <div class="input-group">
+                <label>帧间隔(ms)：</label>
+                <input type="text" value="50" id="timeSpanInput" placeholder="建议50，最低15" />
+            </div>
+
+            <div class="input-group">
+                <label>开始时间(ms)：</label>
+                <input type="text" value="-1" id="startTimeInput" placeholder="-1表示第一个note前" />
+            </div>
+
+            <div class="input-group">
+                <label>结束时间(ms)：</label>
+                <input type="text" value="-1" id="endTimeInput" placeholder="-1表示谱面结尾" />
+            </div>
+
+            <div class="input-group">
+                <label>GIF质量：</label>
+                <input type="text" value="10" id="qualityInput" placeholder="不建议修改，值越小质量越好，但是经测试区别非常小" />
+            </div>
+
             <button id="generateBtn">生成GIF</button>
         </div>
 
@@ -195,6 +234,10 @@
         document.addEventListener('DOMContentLoaded', function () {
             const beatmapInput = document.getElementById('beatmapInput');
             const scaleInput = document.getElementById('scaleInput');
+            const timeSpanInput = document.getElementById('timeSpanInput');
+            const startTimeInput = document.getElementById('startTimeInput');
+            const endTimeInput = document.getElementById('endTimeInput');
+            const qualityInput = document.getElementById('qualityInput');
             const generateBtn = document.getElementById('generateBtn');
             const status = document.getElementById('status');
             const progressContainer = document.getElementById('progressContainer');
@@ -204,6 +247,12 @@
             generateBtn.addEventListener('click', function () {
                 const beatmapID = beatmapInput.value.trim();
                 const scaleValue = parseFloat(scaleInput.value.trim());
+                const timeSpanValue = parseInt(timeSpanInput.value.trim());
+                const startTimeValue = parseInt(startTimeInput.value.trim());
+                const endTimeValue = parseInt(endTimeInput.value.trim());
+                const qualityValue = parseInt(qualityInput.value.trim());
+
+                // 验证输入
                 if (isNaN(scaleValue) || scaleValue <= 0 || scaleValue > 1) {
                     status.textContent = '请输入有效的缩放比例 (0 < 比例 ≤ 1)';
                     status.style.color = '#ff6666';
@@ -214,10 +263,31 @@
                     status.style.color = '#ff6666';
                     return;
                 }
-                generateGIF(beatmapID, scaleValue);
+                if (isNaN(timeSpanValue) || timeSpanValue < 15) {
+                    status.textContent = '请输入有效的帧间隔时间';
+                    status.style.color = '#ff6666';
+                    return;
+                }
+                if (isNaN(startTimeValue) || (startTimeValue < 0 && startTimeValue !== -1)) {
+                    status.textContent = '请输入有效的开始时间';
+                    status.style.color = '#ff6666';
+                    return;
+                }
+                if (isNaN(endTimeValue) || (endTimeValue !== -1 && endTimeValue <= startTimeValue)) {
+                    status.textContent = '请输入有效的结束时间';
+                    status.style.color = '#ff6666';
+                    return;
+                }
+                if (isNaN(qualityValue) || qualityValue < 1 || qualityValue > 30) {
+                    status.textContent = '请输入有效的GIF质量 (1-30)';
+                    status.style.color = '#ff6666';
+                    return;
+                }
+
+                generateGIF(beatmapID, scaleValue, timeSpanValue, startTimeValue, endTimeValue, qualityValue);
             });
 
-            function generateGIF(beatmapID, scaleValue) {
+            function generateGIF(beatmapID, scaleValue, timeSpanValue, startTimeValue, endTimeValue, qualityValue) {
                 status.textContent = '正在获取谱面数据...';
                 status.style.color = '#fff';
                 progressContainer.style.display = 'block';
@@ -247,28 +317,30 @@
                         status.textContent = '加载帧...';
                         progressBar.style.width = '30%';
 
+                        // 使用用户指定的开始和结束时间
+                        const actualStartTime = startTimeValue === -1 ? preview.startTime : Math.max(startTimeValue, 0);
+                        const actualEndTime = endTimeValue === -1 ? preview.endTime : Math.min(endTimeValue, preview.endTime);
+
                         var gif = new GIF({
                             workers: 4,
                             workerScript: './gif.js/gif.worker.js',
-                            quality: 10,
+                            quality: qualityValue,
                             width: preview.screen.width * scaleValue,
                             height: preview.screen.height * scaleValue,
                             //transparent: "0x000000",
                         });
 
-                        const timeSpan = 50;
-                        const totalFrames = Math.ceil((preview.endTime - preview.startTime) / timeSpan);
+                        const totalFrames = Math.ceil((actualEndTime - actualStartTime) / timeSpanValue);
                         let currentFrame = 0;
-
 
                         // 添加帧
                         while (currentFrame <= totalFrames) {
-                            const t = preview.startTime + currentFrame * timeSpan;
+                            const t = actualStartTime + currentFrame * timeSpanValue;
                             preview.at(t);
 
                             gif.addFrame(preview.ctx, {
                                 copy: true,
-                                delay: timeSpan
+                                delay: timeSpanValue
                             });
 
                             currentFrame++;
