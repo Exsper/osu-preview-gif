@@ -7,6 +7,7 @@ function Preview(SCALE = 0.2) {
     this.ctx.scale(SCALE, SCALE);
     this.startTime = 0;
     this.endTime = 0;
+    this.previewTime = -1;
 
     var self = this;
 }
@@ -23,6 +24,8 @@ Preview.prototype.load = function (osufile, success, fail) {
         self.ctx.save();
         self.beatmap.update(self.ctx);
         self.at(0);
+
+        self.previewTime = self.beatmap.PreviewTime > 0 ? self.beatmap.PreviewTime : -1;
 
         self.startTime = self.beatmap.HitObjects.length > 0 ? self.beatmap.HitObjects[0].time - 1000 : 0;
         if (self.startTime < 0) {

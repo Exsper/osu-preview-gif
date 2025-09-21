@@ -5,6 +5,7 @@ function Beatmap(osu)
 
     // [General]
     this.StackLeniency = 0.7;
+    this.PreviewTime = -1;
 
     // [Metadata]
     this.Title = '';

@@ -64,13 +64,25 @@
             white-space: nowrap;
         }
 
-        input {
+        input[type="text"] {
             padding: 12px;
             border: none;
             border-radius: 5px;
             background: rgba(255, 255, 255, 0.1);
             color: white;
             width: 200px;
+        }
+
+        input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            margin-left: 10px;
         }
 
         button {
@@ -162,6 +174,10 @@
             <div class="input-group">
                 <label>开始时间(ms)：</label>
                 <input type="text" value="-1" id="startTimeInput" placeholder="-1表示第一个note前" />
+                <div class="checkbox-group">
+                    <input type="checkbox" id="usePreviewTimeCheckbox" checked />
+                    <label for="usePreviewTimeCheckbox">优先使用谱面预览时间</label>
+                </div>
             </div>
 
             <div class="input-group">
@@ -238,6 +254,7 @@
             const startTimeInput = document.getElementById('startTimeInput');
             const durationInput = document.getElementById('durationInput');
             const qualityInput = document.getElementById('qualityInput');
+            const usePreviewTimeCheckbox = document.getElementById('usePreviewTimeCheckbox');
             const generateBtn = document.getElementById('generateBtn');
             const status = document.getElementById('status');
             const progressContainer = document.getElementById('progressContainer');
@@ -251,6 +268,7 @@
                 const startTimeValue = parseInt(startTimeInput.value.trim());
                 const durationValue = parseInt(durationInput.value.trim());
                 const qualityValue = parseInt(qualityInput.value.trim());
+                const usePreviewTime = usePreviewTimeCheckbox.checked;
 
                 // 验证输入
                 if (isNaN(scaleValue) || scaleValue <= 0 || scaleValue > 1) {
@@ -284,10 +302,10 @@
                     return;
                 }
 
-                generateGIF(beatmapID, scaleValue, timeSpanValue, startTimeValue, durationValue, qualityValue);
+                generateGIF(beatmapID, scaleValue, timeSpanValue, startTimeValue, durationValue, qualityValue, usePreviewTime);
             });
 
-            function generateGIF(beatmapID, scaleValue, timeSpanValue, startTimeValue, durationValue, qualityValue) {
+            function generateGIF(beatmapID, scaleValue, timeSpanValue, startTimeValue, durationValue, qualityValue, usePreviewTime) {
                 status.textContent = '正在获取谱面数据...';
                 status.style.color = '#fff';
                 progressContainer.style.display = 'block';
@@ -317,8 +335,26 @@
                         status.textContent = '加载帧...';
                         progressBar.style.width = '30%';
 
-                        // 使用用户指定的开始和结束时间
-                        const actualStartTime = startTimeValue === -1 ? preview.startTime : Math.max(startTimeValue, 0);
+                        // 计算实际开始时间
+                        let actualStartTime;
+
+                        if (usePreviewTime && preview.previewTime >= 0) {
+                            // 检查预览时间是否有效
+                            const previewEndTime = durationValue === -1 ? preview.endTime : preview.previewTime + durationValue;
+
+                            if (previewEndTime <= preview.endTime) {
+                                // 使用谱面预览时间
+                                actualStartTime = preview.previewTime;
+                                status.textContent += ' (使用谱面预览时间)';
+                            } else {
+                                // 预览时间加上持续时间超过谱面结束时间，使用用户指定的开始时间
+                                actualStartTime = startTimeValue === -1 ? preview.startTime : Math.max(startTimeValue, 0);
+                            }
+                        } else {
+                            // 使用用户指定的开始时间
+                            actualStartTime = startTimeValue === -1 ? preview.startTime : Math.max(startTimeValue, 0);
+                        }
+
                         const actualEndTime = durationValue === -1 ? preview.endTime : Math.min(actualStartTime + durationValue, preview.endTime);
 
                         var gif = new GIF({
